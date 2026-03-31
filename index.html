@@ -2,35 +2,86 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>物理动画演示合集</title>
+  <title>高中理化动画演示合集</title>
   <style>
-    body{font-family:Arial;padding:20px;max-width:800px;margin:0 auto}
-    .item{padding:12px 20px;background:#f7f9fa;margin:10px 0;border-radius:8px}
-    .item a{color:#0066cc;text-decoration:none;font-size:18px}
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .subject-section {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: #0066cc;
+      border-bottom: 2px solid #0066cc;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .item {
+      padding: 12px 20px;
+      background: #f7f9fa;
+      margin: 10px 0;
+      border-radius: 8px;
+      transition: background-color 0.3s;
+    }
+    .item:hover {
+      background-color: #e3f2fd;
+    }
+    .item a {
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 18px;
+      display: block;
+    }
+    .item a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <h1>高中物理动画演示合集</h1>
+  <h1>高中理化动画演示合集</h1>
 
-  <div class="item">
-    <a href="物理/00-牛二定律/" target="_blank">00. 牛二定律</a>
+  <!-- 物理部分 -->
+  <div class="subject-section">
+    <h2>物理演示</h2>
+    <div class="item">
+      <a href="物理/00-牛二定律/" target="_blank">00. 牛二定律</a>
+    </div>
+    <div class="item">
+      <a href="物理/01-受力分析-斜面/" target="_blank">01. 受力分析 — 斜面 + 挡板</a>
+    </div>
+    <div class="item">
+      <a href="物理/02-平抛运动/" target="_blank">02. 平抛运动动画</a>
+    </div>
+    <div class="item">
+      <a href="物理/03-圆周运动/" target="_blank">03. 圆周运动</a>
+    </div>
+    <div class="item">
+      <a href="物理/04-万有引力/" target="_blank">04. 万有引力</a>
+    </div>
   </div>
 
-
-  <div class="item">
-    <a href="物理/01-受力分析-斜面/" target="_blank">01. 受力分析 — 斜面 + 挡板</a>
-  </div>
-
-  <div class="item">
-    <a href="物理/02-平抛运动/" target="_blank">02. 平抛运动动画</a>
-  </div>
-
-  <div class="item">
-    <a href="物理/03-圆周运动/" target="_blank">03. 圆周运动</a>
-  </div>
-  
-  <div class="item">
-    <a href="物理/04-万有引力/" target="_blank">04. 万有引力</a>
+  <!-- 化学部分 -->
+  <div class="subject-section">
+    <h2>化学演示</h2>
+    <div class="item">
+      <a href="化学/01-氧化还原反应/" target="_blank">01. 氧化还原反应</a>
+    </div>
+    <div class="item">
+      <a href="化学/02-原电池/" target="_blank">02. 原电池</a>
+    </div>
   </div>
   
 </body>
