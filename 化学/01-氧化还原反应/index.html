@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>氧化还原反应动态图解</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --orange: #f97316;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --text-light: #64748b;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            padding-bottom: 4rem;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #2563eb, #4338ca);
+            color: white;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { margin: 0 0 1rem 0; font-size: 2.5rem; }
+        .header p { margin: 0 auto; font-size: 1.1rem; opacity: 0.9; max-width: 600px; }
+
+        /* Container & Sections */
+        .container {
+            max-width: 900px;
+            margin: -2rem auto 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .section-title {
+            color: var(--text);
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.8rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        /* Animation Section */
+        .anim-stage {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 3rem 1rem;
+            border-radius: 12px;
+            position: relative;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .atom {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white;
+            transition: all 0.5s ease;
+            text-align: center;
+            z-index: 2;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        #zn-atom { background: #94a3b8; border: 4px solid #64748b; }
+        #cu-atom { background: #3b82f6; border: 4px solid #1d4ed8; }
+        .atom-label { font-size: 0.85rem; font-weight: normal; margin-top: 4px; font-family: monospace;}
+        .atom-status { font-size: 0.75rem; font-weight: bold; margin-top: 2px; opacity: 0; transition: opacity 0.5s;}
+        
+        .electrons {
+            position: absolute;
+            left: 25%;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: transform 1.5s ease-in-out, opacity 0.3s;
+            z-index: 3;
+        }
+        .electron {
+            width: 28px;
+            height: 28px;
+            background: #fbbf24;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid #d97706;
+            color: #92400e;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-group { text-align: center; margin-top: 1.5rem; }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0 0.5rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-secondary { background: #e2e8f0; color: var(--text); }
+        .btn-secondary:hover { background: #cbd5e1; }
+
+        /* Mantra Section */
+        .mantra-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 600px) { .mantra-grid { grid-template-columns: 1fr; } }
+        .mantra-card { padding: 2rem; border-radius: 12px; border: 2px solid; position: relative; }
+        .mantra-red { background: #fef2f2; border-color: #fecaca; }
+        .mantra-blue { background: #eff6ff; border-color: #bfdbfe; }
+        .mantra-badge { position: absolute; top: 0; right: 0; padding: 4px 12px; border-bottom-left-radius: 12px; font-size: 0.85rem; font-weight: bold; color: white; }
+        .mantra-red .mantra-badge { background: var(--red); }
+        .mantra-blue .mantra-badge { background: var(--blue); }
+        .mantra-card h3 { text-align: center; margin-top: 0; font-size: 1.5rem; }
+        .mantra-red h3 { color: #b91c1c; }
+        .mantra-blue h3 { color: #1d4ed8; }
+        .step { background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        .step-num { width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.8rem; }
+        .mantra-red .step-num { background: #fee2e2; color: var(--red); }
+        .mantra-blue .step-num { background: #dbeafe; color: var(--blue); }
+        .arrow-down { text-align: center; color: #94a3b8; margin: 0.2rem 0; font-weight: bold; }
+
+        /* Dual Line Bridge */
+        .bridge-wrapper { overflow-x: auto; padding: 2rem 0; }
+        .bridge-container { position: relative; width: 600px; height: 200px; margin: 0 auto; }
+        .equation { font-size: 2.5rem; font-family: monospace; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 1.5rem; position: absolute; top: 50%; left: 0; width: 100%; transform: translateY(-50%); z-index: 2; }
+        .eq-part { position: relative; cursor: pointer; }
+        .valency { position: absolute; top: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 1rem; opacity: 0; transition: opacity 0.2s; font-family: sans-serif; }
+        .eq-part:hover .valency { opacity: 1; }
+        .bridge-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+
+        /* Ranking */
+        .ranking-row { display: flex; align-items: center; gap: 0.5rem; overflow-x: auto; padding-bottom: 1rem; margin-top: 1rem; }
+        .metal-item { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; background: #f1f5f9; border: 2px solid #cbd5e1; flex-shrink: 0; transition: transform 0.2s; }
+        .metal-item:hover { transform: translateY(-5px); }
+        .metal-item.strong { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+        .metal-item.medium { background: #ffedd5; border-color: #fdba74; color: #c2410c; }
+        .ion-item { padding: 0.6rem 1.2rem; border-radius: 24px; background: white; border: 2px solid #fed7aa; color: #c2410c; font-weight: bold; flex-shrink: 0; transition: transform 0.2s; }
+        .ion-item:hover { transform: translateY(-5px); }
+        .gradient-bar { height: 8px; border-radius: 4px; margin-top: 0.5rem; position: relative; }
+        .bar-red { background: linear-gradient(to right, #ef4444, #f97316, #cbd5e1); }
+        .bar-orange { background: linear-gradient(to right, #f97316, #cbd5e1); }
+        .bar-labels { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-top: 0.5rem; color: var(--text-light); }
+        
+        .tip-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 1.5rem; border-radius: 12px; margin-top: 2rem; color: #1e3a8a; }
+        .tip-box ul { margin: 0; padding-left: 1.5rem; }
+        .tip-box li { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ 氧化还原反应动态图解</h1>
+        <p>纯原生 HTML + CSS + JavaScript 实现，无任何框架依赖</p>
+    </div>
+
+    <div class="container">
+        <!-- Section 1 -->
+        <div class="section">
+            <h2 class="section-title">第一部分：反应的本质 (电子转移)</h2>
+            <p style="text-align: center; color: var(--text-light);">氧化还原反应的本质是<strong style="color:var(--primary)">电子的转移（得失或偏移）</strong>。<br>下面以锌(Zn)与铜离子(Cu²⁺)的置换反应为例：</p>
+            
+            <div class="anim-stage">
+                <div class="atom" id="zn-atom">
+                    <span id="zn-symbol">Zn</span>
+                    <span class="atom-label" id="zn-valency">化合价: 0</span>
+                    <span class="atom-status" id="zn-status" style="color:#ef4444">失去电子，被氧化</span>
+                </div>
+                
+                <div class="electrons" id="electrons">
+                    <div class="electron">e⁻</div>
+                    <div class="electron">e⁻</div>
+                </div>
+
+                <div class="atom" id="cu-atom">
+                    <span id="cu-symbol">Cu²⁺</span>
+                    <span class="atom-label" id="cu-valency">化合价: +2</span>
+                    <span class="atom-status" id="cu-status" style="color:#eff6ff">得到电子，被还原</span>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn" id="start-btn" onclick="startAnimation()">开始反应</button>
+                <button class="btn btn-secondary" id="reset-btn" onclick="resetAnimation()" disabled style="opacity: 0.5; cursor: not-allowed;">重置</button>
+            </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="section">
+            <h2 class="section-title">第二部分：核心口诀解析</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">记住这个黄金口诀：<strong style="color:var(--red); font-size: 1.2rem; margin: 0 5px;">升失氧，降得还</strong>；<strong style="color:var(--primary); font-size: 1.2rem; margin: 0 5px;">剂性一致，其他相反</strong>。</p>
+            
+            <div class="mantra-grid">
+                <div class="mantra-card mantra-red">
+                    <div class="mantra-badge">还原剂</div>
+                    <h3>升 · 失 · 氧</h3>
+                    <div class="step"><div class="step-num">1</div> <span style="color: var(--red)">化合价升高</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">2</div> <span style="color: var(--red)">失去电子</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">3</div> <span style="color: var(--red)">发生氧化反应 (被氧化)</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">4</div> <span style="color: var(--red)">生成氧化产物</span></div>
+                </div>
+                <div class="mantra-card mantra-blue">
+                    <div class="mantra-badge">氧化剂</div>
+                    <h3>降 · 得 · 还</h3>
+                    <div class="step"><div class="step-num">1</div> <span style="color: var(--blue)">化合价降低</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">2</div> <span style="color: var(--blue)">得到电子</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">3</div> <span style="color: var(--blue)">发生还原反应 (被还原)</span></div>
+                    <div class="arrow-down">↓</div>
+                    <div class="step"><div class="step-num">4</div> <span style="color: var(--blue)">生成还原产物</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3 -->
+        <div class="section">
+            <h2 class="section-title">第三部分：双线桥法分析</h2>
+            <p style="text-align: center; color: var(--text-light);">双线桥法用于标明反应前后同一元素原子得失电子的情况。<br>箭头从反应物指向生成物中的<strong style="color:var(--primary)">同一种元素</strong>。</p>
+            
+            <div class="bridge-wrapper">
+                <div class="bridge-container">
+                    <div class="equation">
+                        <div class="eq-part">
+                            <span class="valency" style="color:var(--red)">0</span>
+                            2Na
+                        </div>
+                        <div>+</div>
+                        <div class="eq-part">
+                            <span class="valency" style="color:var(--blue)">0</span>
+                            Cl₂
+                        </div>
+                        <div>→</div>
+                        <div class="eq-part">
+                            <span class="valency" style="color:var(--red); left: 10%">+1</span>
+                            <span class="valency" style="color:var(--blue); left: 90%">-1</span>
+                            2NaCl
+                        </div>
+                    </div>
+                    
+                    <svg class="bridge-svg" viewBox="0 0 600 200">
+                        <defs>
+                            <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                            </marker>
+                            <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                            </marker>
+                        </defs>
+                        <!-- Na to Na -->
+                        <path d="M 170,80 L 170,30 L 400,30 L 400,80" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-red)" stroke-dasharray="4 2"/>
+                        <text x="285" y="20" text-anchor="middle" fill="#ef4444" font-size="14" font-weight="bold" font-family="sans-serif">失去 2×e⁻，化合价升高，被氧化</text>
+                        
+                        <!-- Cl to Cl -->
+                        <path d="M 270,120 L 270,170 L 450,170 L 450,120" fill="none" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)" stroke-dasharray="4 2"/>
+                        <text x="360" y="190" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="bold" font-family="sans-serif">得到 2×e⁻，化合价降低，被还原</text>
+                    </svg>
+                </div>
+            </div>
+            <p style="text-align: center; color: var(--text-light); font-size: 0.9rem;">💡 提示：鼠标悬浮在化学式上可查看化合价变化</p>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="section">
+            <h2 class="section-title">第四部分：还原性强弱顺序 (常考排序)</h2>
+            <p style="text-align: center; color: var(--text-light);">判断反应能否发生的重要依据是：<strong style="color:var(--primary)">强还原剂 + 强氧化剂 → 弱氧化产物 + 弱还原产物</strong>。<br>当多种还原剂同时存在时，<strong style="color:var(--red)">还原性最强</strong>的优先发生反应。</p>
+            
+            <h4 style="margin-bottom: 0.5rem; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                <div style="width: 8px; height: 20px; background: var(--red); border-radius: 4px;"></div>
+                金属单质还原性顺序 (金属活动性顺序)
+            </h4>
+            <div class="ranking-row" id="metal-ranking">
+                <!-- Populated by JS -->
+            </div>
+            <div class="gradient-bar bar-red"></div>
+            <div class="bar-labels">
+                <span style="color: var(--red)">还原性最强</span>
+                <span>还原性最弱</span>
+            </div>
+
+            <h4 style="margin-top: 2.5rem; margin-bottom: 0.5rem; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                <div style="width: 8px; height: 20px; background: var(--orange); border-radius: 4px;"></div>
+                常见非金属离子及低价态离子还原性顺序
+            </h4>
+            <div class="ranking-row" id="ion-ranking">
+                <!-- Populated by JS -->
+            </div>
+            <div class="gradient-bar bar-orange"></div>
+            <div class="bar-labels">
+                <span style="color: var(--orange)">还原性较强</span>
+                <span>还原性极弱</span>
+            </div>
+
+            <div class="tip-box">
+                <strong style="display: block; margin-bottom: 10px; font-size: 1.1rem;">📌 核心考点提示</strong>
+                <ul>
+                    <li><strong>Fe²⁺ 的特殊位置：</strong> 还原性介于 I⁻ 和 Br⁻ 之间（<strong style="color:var(--red); background: white; padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">I⁻ &gt; Fe²⁺ &gt; Br⁻</strong>）。这是高考常考的离子共存和反应先后顺序考点。</li>
+                    <li><strong>反应先后规律：</strong> 当一种氧化剂遇到多种还原剂时，<strong>还原性最强</strong>的优先发生反应。<br>
+                    <span style="display: inline-block; margin-top: 5px; background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid #bfdbfe; font-size: 0.9rem;">例如：向含有 I⁻ 和 Fe²⁺ 的溶液中通入少量 Cl₂，Cl₂ 会优先氧化还原性更强的 I⁻。</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Animation Logic ---
+        function startAnimation() {
+            const btnStart = document.getElementById('start-btn');
+            const btnReset = document.getElementById('reset-btn');
+            const electrons = document.getElementById('electrons');
+            
+            const znAtom = document.getElementById('zn-atom');
+            const znSymbol = document.getElementById('zn-symbol');
+            const znValency = document.getElementById('zn-valency');
+            const znStatus = document.getElementById('zn-status');
+            
+            const cuAtom = document.getElementById('cu-atom');
+            const cuSymbol = document.getElementById('cu-symbol');
+            const cuValency = document.getElementById('cu-valency');
+            const cuStatus = document.getElementById('cu-status');
+
+            // Disable start, enable reset
+            btnStart.disabled = true;
+            btnStart.style.opacity = '0.5';
+            btnStart.style.cursor = 'not-allowed';
+            
+            btnReset.disabled = false;
+            btnReset.style.opacity = '1';
+            btnReset.style.cursor = 'pointer';
+
+            // 1. Show and move electrons
+            electrons.style.opacity = '1';
+            // Calculate distance dynamically based on container
+            electrons.style.transform = 'translate(calc(150px + 10vw), -50%)';
+
+            // 2. After electrons arrive, change states
+            setTimeout(() => {
+                electrons.style.opacity = '0';
+                
+                // Update Zn to Zn2+
+                znAtom.style.background = '#f1f5f9';
+                znAtom.style.color = '#475569';
+                znAtom.style.borderColor = '#cbd5e1';
+                znSymbol.innerText = 'Zn²⁺';
+                znValency.innerText = '化合价: +2';
+                znValency.style.color = '#ef4444';
+                znStatus.style.opacity = '1';
+                
+                // Update Cu2+ to Cu
+                cuAtom.style.background = '#b45309';
+                cuAtom.style.borderColor = '#78350f';
+                cuSymbol.innerText = 'Cu';
+                cuValency.innerText = '化合价: 0';
+                cuValency.style.color = '#bfdbfe';
+                cuStatus.style.opacity = '1';
+                cuStatus.style.color = '#bfdbfe';
+            }, 1500);
+        }
+
+        function resetAnimation() {
+            const btnStart = document.getElementById('start-btn');
+            const btnReset = document.getElementById('reset-btn');
+            const electrons = document.getElementById('electrons');
+            
+            const znAtom = document.getElementById('zn-atom');
+            const znSymbol = document.getElementById('zn-symbol');
+            const znValency = document.getElementById('zn-valency');
+            const znStatus = document.getElementById('zn-status');
+            
+            const cuAtom = document.getElementById('cu-atom');
+            const cuSymbol = document.getElementById('cu-symbol');
+            const cuValency = document.getElementById('cu-valency');
+            const cuStatus = document.getElementById('cu-status');
+
+            // Enable start, disable reset
+            btnStart.disabled = false;
+            btnStart.style.opacity = '1';
+            btnStart.style.cursor = 'pointer';
+            
+            btnReset.disabled = true;
+            btnReset.style.opacity = '0.5';
+            btnReset.style.cursor = 'not-allowed';
+
+            // Reset electrons instantly
+            electrons.style.transition = 'none';
+            electrons.style.opacity = '0';
+            electrons.style.transform = 'translate(0, -50%)';
+            
+            // Force reflow to apply transition removal immediately
+            void electrons.offsetWidth;
+            
+            // Restore transition for next time
+            electrons.style.transition = 'transform 1.5s ease-in-out, opacity 0.3s';
+
+            // Reset Zn
+            znAtom.style.background = '#94a3b8';
+            znAtom.style.color = 'white';
+            znAtom.style.borderColor = '#64748b';
+            znSymbol.innerText = 'Zn';
+            znValency.innerText = '化合价: 0';
+            znValency.style.color = 'white';
+            znStatus.style.opacity = '0';
+
+            // Reset Cu
+            cuAtom.style.background = '#3b82f6';
+            cuAtom.style.borderColor = '#1d4ed8';
+            cuSymbol.innerText = 'Cu²⁺';
+            cuValency.innerText = '化合价: +2';
+            cuValency.style.color = 'white';
+            cuStatus.style.opacity = '0';
+        }
+
+        // --- Populate Rankings ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const metals = ["K", "Ca", "Na", "Mg", "Al", "Zn", "Fe", "Sn", "Pb", "(H)", "Cu", "Hg", "Ag", "Pt", "Au"];
+            const ions = ["S²⁻", "SO₃²⁻", "I⁻", "Fe²⁺", "Br⁻", "Cl⁻", "F⁻"];
+
+            const metalContainer = document.getElementById('metal-ranking');
+            metals.forEach((m, i) => {
+                let className = 'metal-item';
+                if (i < 3) className += ' strong';
+                else if (i < 9) className += ' medium';
+                
+                metalContainer.innerHTML += `<div class="${className}">${m}</div>`;
+                if (i < metals.length - 1) {
+                    metalContainer.innerHTML += `<div style="color:#cbd5e1; font-weight:bold; font-size:1.2rem;">&gt;</div>`;
+                }
+            });
+
+            const ionContainer = document.getElementById('ion-ranking');
+            ions.forEach((ion, i) => {
+                ionContainer.innerHTML += `<div class="ion-item">${ion}</div>`;
+                if (i < ions.length - 1) {
+                    ionContainer.innerHTML += `<div style="color:#cbd5e1; font-weight:bold; font-size:1.5rem;">&gt;</div>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
