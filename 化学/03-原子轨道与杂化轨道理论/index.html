@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原子轨道与杂化轨道理论 3D 演示</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --scene-bg: #0f172a;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            
+            /* Orbital Colors */
+            --color-hybrid: #84cc16;
+            --color-p-pos: #3b82f6;
+            --color-p-neg: #ef4444;
+            --color-s: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 { font-size: 2.2rem; color: var(--text-main); margin-bottom: 8px; }
+        .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        @media (min-width: 860px) {
+            .main-layout { flex-direction: row; }
+        }
+
+        /* 3D Viewer Section */
+        .viewer-section {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .scene-container {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            background: radial-gradient(circle at center, #1e293b, var(--scene-bg));
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+            cursor: grab;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+        
+        .scene-container:active { cursor: grabbing; }
+
+        .hint {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+            pointer-events: none;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* 3D Molecule */
+        .molecule {
+            position: relative;
+            width: 0;
+            height: 0;
+            transform-style: preserve-3d;
+            transform: rotateX(-15deg) rotateY(0deg);
+        }
+
+        .nucleus {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            left: -8px;
+            top: -8px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8);
+            transform-style: preserve-3d;
+        }
+
+        /* Orbital Lobes */
+        .lobe-wrapper {
+            position: absolute;
+            left: 0;
+            top: 0;
+            transform-style: preserve-3d;
+        }
+
+        .lobe {
+            position: absolute;
+            left: -30px;
+            bottom: 0;
+            width: 60px;
+            height: 140px;
+            border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+            transform-origin: bottom center;
+            /* mix-blend-mode: screen; */
+        }
+
+        .lobe-hybrid {
+            background: radial-gradient(circle at 50% 40%, #bef264, #4d7c0f);
+            opacity: 0.75;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3);
+        }
+
+        .lobe-p-pos {
+            background: radial-gradient(circle at 50% 40%, #93c5fd, #1d4ed8);
+            opacity: 0.65;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3);
+        }
+
+        .lobe-p-neg {
+            background: radial-gradient(circle at 50% 40%, #fca5a5, #b91c1c);
+            opacity: 0.65;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3);
+        }
+
+        .lobe-s {
+            width: 160px;
+            height: 160px;
+            left: -80px;
+            bottom: -80px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #d8b4fe, #7e22ce);
+            opacity: 0.4;
+            transform-origin: center center;
+            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Info Section */
+        .info-section {
+            flex: 1;
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-title {
+            font-size: 1.5rem;
+            color: var(--primary);
+            border-bottom: 2px solid #eff6ff;
+            padding-bottom: 10px;
+        }
+
+        .info-desc {
+            font-size: 1.05rem;
+            color: #475569;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        .legend {
+            margin-top: auto;
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .legend h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .legend ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .legend li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>⚛️ 原子轨道与杂化轨道理论</h1>
+        <p class="subtitle">Atomic Orbitals & Hybridization (3D 交互演示)</p>
+    </header>
+
+    <div class="main-layout">
+        <!-- Left: 3D Viewer -->
+        <div class="viewer-section">
+            <div class="scene-container" id="scene">
+                <div class="hint">👆 拖拽可全方位旋转视角</div>
+                <div class="molecule" id="molecule">
+                    <div class="nucleus"></div>
+                    <!-- Lobes will be injected here by JS -->
+                </div>
+            </div>
+            
+            <div class="controls" id="controls">
+                <button class="btn" onclick="setOrbital('s')">s 轨道</button>
+                <button class="btn" onclick="setOrbital('p')">p 轨道</button>
+                <button class="btn active" onclick="setOrbital('sp3')">sp³ 杂化</button>
+                <button class="btn" onclick="setOrbital('sp2')">sp² 杂化</button>
+                <button class="btn" onclick="setOrbital('sp')">sp 杂化</button>
+            </div>
+        </div>
+
+        <!-- Right: Information -->
+        <div class="info-section">
+            <h2 class="info-title" id="info-title">sp³ 杂化 (sp³ Hybridization)</h2>
+            <p class="info-desc" id="info-desc">1个s轨道和3个p轨道混合，形成4个能量相等的sp³杂化轨道。空间构型为正四面体。</p>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">空间构型</span>
+                    <span class="stat-value" id="info-shape">正四面体</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">键角 (Angle)</span>
+                    <span class="stat-value" id="info-angle">109°28'</span>
+                </div>
+                <div class="stat-card" style="grid-column: span 2;">
+                    <span class="stat-label">代表分子</span>
+                    <span class="stat-value" id="info-example">CH₄ (甲烷), CCl₄</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <h3>图例说明</h3>
+                <ul>
+                    <li><span class="color-box" style="background: var(--color-hybrid);"></span> 杂化轨道 (Hybrid Orbital)</li>
+                    <li><span class="color-box" style="background: var(--color-p-pos);"></span> 未杂化 p 轨道 (正相位)</li>
+                    <li><span class="color-box" style="background: var(--color-p-neg);"></span> 未杂化 p 轨道 (负相位)</li>
+                    <li><span class="color-box" style="background: var(--color-s);"></span> s 轨道 (球形对称)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Data Definitions ---
+    const orbitalData = {
+        's': {
+            title: 's 轨道 (s Orbital)',
+            desc: '呈球形对称分布。离核越近，电子出现的概率越大。s轨道只有一个空间取向。',
+            shape: '球形 (Spherical)',
+            angle: '无',
+            example: 'H (氢原子), He',
+            lobes: [
+                { type: 's', transform: 'translateY(0)' }
+            ]
+        },
+        'p': {
+            title: 'p 轨道 (p Orbital)',
+            desc: '呈哑铃形，有三个互相垂直的空间伸展方向 (px, py, pz)。图中展示的是沿垂直轴的一个p轨道。',
+            shape: '哑铃形 (Dumbbell)',
+            angle: '90° (各p轨道间)',
+            example: 'O, N, F 等原子的价电子层',
+            lobes: [
+                { type: 'p-pos', transform: 'rotateX(0deg)' },
+                { type: 'p-neg', transform: 'rotateX(180deg)' }
+            ]
+        },
+        'sp3': {
+            title: 'sp³ 杂化 (sp³ Hybridization)',
+            desc: '1个s轨道和3个p轨道混合，形成4个能量相等的sp³杂化轨道。四个轨道指向正四面体的四个顶点，排斥力最小。',
+            shape: '正四面体 (Tetrahedral)',
+            angle: '109°28\' (约 109.5°)',
+            example: 'CH₄ (甲烷), CCl₄, 金刚石',
+            lobes: [
+                { type: 'hybrid', transform: 'rotateY(0deg) rotateX(0deg)' }, // Up
+                { type: 'hybrid', transform: 'rotateY(0deg) rotateX(109.47deg)' },
+                { type: 'hybrid', transform: 'rotateY(120deg) rotateX(109.47deg)' },
+                { type: 'hybrid', transform: 'rotateY(240deg) rotateX(109.47deg)' }
+            ]
+        },
+        'sp2': {
+            title: 'sp² 杂化 (sp² Hybridization)',
+            desc: '1个s轨道和2个p轨道混合，形成3个sp²杂化轨道（处于同一平面）。剩余1个未杂化的p轨道垂直于该平面，常用于形成 π 键。',
+            shape: '平面正三角形 (Trigonal Planar)',
+            angle: '120°',
+            example: 'C₂H₄ (乙烯), BF₃, 石墨',
+            lobes: [
+                // 3 hybrids in XZ plane (rotateX 90)
+                { type: 'hybrid', transform: 'rotateY(0deg) rotateX(90deg)' },
+                { type: 'hybrid', transform: 'rotateY(120deg) rotateX(90deg)' },
+                { type: 'hybrid', transform: 'rotateY(240deg) rotateX(90deg)' },
+                // 1 unhybridized p orbital on Y axis (vertical)
+                { type: 'p-pos', transform: 'rotateX(0deg)' },
+                { type: 'p-neg', transform: 'rotateX(180deg)' }
+            ]
+        },
+        'sp': {
+            title: 'sp 杂化 (sp Hybridization)',
+            desc: '1个s轨道和1个p轨道混合，形成2个sp杂化轨道（呈直线型）。剩余2个未杂化的p轨道互相垂直，常用于形成两个 π 键（如叁键）。',
+            shape: '直线型 (Linear)',
+            angle: '180°',
+            example: 'C₂H₂ (乙炔), CO₂, BeCl₂',
+            lobes: [
+                // 2 hybrids along X axis
+                { type: 'hybrid', transform: 'rotateY(90deg) rotateX(90deg)' },
+                { type: 'hybrid', transform: 'rotateY(-90deg) rotateX(90deg)' },
+                // p orbital 1 on Y axis (vertical)
+                { type: 'p-pos', transform: 'rotateX(0deg)' },
+                { type: 'p-neg', transform: 'rotateX(180deg)' },
+                // p orbital 2 on Z axis (forward/backward)
+                { type: 'p-pos', transform: 'rotateY(0deg) rotateX(90deg)' },
+                { type: 'p-neg', transform: 'rotateY(180deg) rotateX(90deg)' }
+            ]
+        }
+    };
+
+    const molecule = document.getElementById('molecule');
+    
+    // --- Render Logic ---
+    function setOrbital(type) {
+        // Update Buttons
+        document.querySelectorAll('.controls .btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.getAttribute('onclick').includes(`'${type}'`)) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Update Info Panel
+        const data = orbitalData[type];
+        document.getElementById('info-title').innerText = data.title;
+        document.getElementById('info-desc').innerText = data.desc;
+        document.getElementById('info-shape').innerText = data.shape;
+        document.getElementById('info-angle').innerText = data.angle;
+        document.getElementById('info-example').innerText = data.example;
+
+        // Clear existing lobes (keep nucleus)
+        const lobes = molecule.querySelectorAll('.lobe-wrapper');
+        lobes.forEach(l => l.remove());
+
+        // Generate new 3D lobes
+        data.lobes.forEach(lobeData => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'lobe-wrapper';
+            wrapper.style.transform = lobeData.transform;
+
+            if (lobeData.type === 's') {
+                // For spherical s orbital, create 3 intersecting circles to look 3D
+                ['rotateY(0deg)', 'rotateY(60deg)', 'rotateY(120deg)', 'rotateX(90deg)'].forEach(rot => {
+                    const plane = document.createElement('div');
+                    plane.className = `lobe lobe-s`;
+                    plane.style.transform = rot;
+                    wrapper.appendChild(plane);
+                });
+            } else {
+                // For p and hybrid orbitals, create 2 intersecting planes (cross shape) to give 3D volume
+                const plane1 = document.createElement('div');
+                plane1.className = `lobe lobe-${lobeData.type}`;
+                
+                const plane2 = document.createElement('div');
+                plane2.className = `lobe lobe-${lobeData.type}`;
+                plane2.style.transform = 'rotateY(90deg)';
+
+                wrapper.appendChild(plane1);
+                wrapper.appendChild(plane2);
+            }
+
+            molecule.appendChild(wrapper);
+        });
+    }
+
+    // --- 3D Interaction & Animation ---
+    const scene = document.getElementById('scene');
+    let isDragging = false;
+    let previousPos = { x: 0, y: 0 };
+    let rot = { x: -15, y: 0 };
+    let autoRotate = true;
+    let resumeTimeout;
+
+    function onPointerDown(e) {
+        isDragging = true;
+        autoRotate = false;
+        clearTimeout(resumeTimeout);
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        previousPos = { x: clientX, y: clientY };
+    }
+
+    function onPointerMove(e) {
+        if (!isDragging) return;
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        
+        const deltaX = clientX - previousPos.x;
+        const deltaY = clientY - previousPos.y;
+        
+        rot.y += deltaX * 0.5;
+        rot.x -= deltaY * 0.5;
+        
+        // Clamp X rotation to prevent flipping upside down completely
+        rot.x = Math.max(-80, Math.min(80, rot.x));
+        
+        molecule.style.transform = `rotateX(${rot.x}deg) rotateY(${rot.y}deg)`;
+        previousPos = { x: clientX, y: clientY };
+    }
+
+    function onPointerUp() {
+        if(isDragging) {
+            isDragging = false;
+            // Resume auto-rotation after 3 seconds of inactivity
+            resumeTimeout = setTimeout(() => { autoRotate = true; }, 3000);
+        }
+    }
+
+    // Mouse Events
+    scene.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+
+    // Touch Events
+    scene.addEventListener('touchstart', onPointerDown, {passive: false});
+    window.addEventListener('touchmove', (e) => { 
+        if(isDragging) e.preventDefault(); // Prevent scrolling while rotating
+        onPointerMove(e); 
+    }, {passive: false});
+    window.addEventListener('touchend', onPointerUp);
+
+    // Auto-rotation Loop
+    function animate() {
+        if (autoRotate) {
+            rot.y += 0.3; // Rotation speed
+            molecule.style.transform = `rotateX(${rot.x}deg) rotateY(${rot.y}deg)`;
+        }
+        requestAnimationFrame(animate);
+    }
+
+    // Initialize
+    setOrbital('sp3');
+    animate();
+
+</script>
+</body>
+</html>
