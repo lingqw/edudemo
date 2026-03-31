@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态矢量三角形演示：缓慢转动挡板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+        delimiters: [
+            {left: '$', right: '$', display: false},
+            {left: '$$', right: '$$', display: true}
+        ],
+        throwOnError: false
+    });"></script>
+    <style>
+        canvas {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-6">
+
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-2 text-blue-700">小球受力动态平衡演示</h1>
+    <p class="text-center text-gray-600 mb-8">构建矢量三角形，重力不变，支持力N方向不变。观察挡板压力F与斜面支持力N的变化。</p>
+
+    <div class="flex flex-col lg:flex-row gap-6 justify-center">
+        <!-- 左侧：物理情景 -->
+        <div class="flex flex-col items-center">
+            <h2 class="text-xl font-semibold mb-3">物理情景图</h2>
+            <canvas id="physCanvas" width="400" height="400"></canvas>
+        </div>
+
+        <!-- 右侧：矢量三角形 -->
+        <div class="flex flex-col items-center">
+            <h2 class="text-xl font-semibold mb-3">动态矢量三角形</h2>
+            <canvas id="vecCanvas" width="400" height="400"></canvas>
+        </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="mt-8 bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
+        <div class="flex items-center justify-between mb-4">
+            <label class="text-lg font-medium">挡板转动角度 α: <span id="alphaValue" class="text-blue-600 font-bold">0°</span></label>
+            <button id="playBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition">自动播放</button>
+        </div>
+        <input type="range" id="alphaSlider" min="0" max="80" value="0" step="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-6">
+        
+        <div class="grid grid-cols-2 gap-4 text-lg">
+            <div class="bg-blue-50 p-4 rounded border border-blue-100">
+                <span class="font-semibold text-blue-800">挡板压力 F:</span> 
+                <span id="fValue" class="font-mono">...</span>
+                <div class="text-sm text-gray-500 mt-1" id="fDesc"></div>
+            </div>
+            <div class="bg-green-50 p-4 rounded border border-green-100">
+                <span class="font-semibold text-green-800">斜面支持力 N:</span> 
+                <span id="nValue" class="font-mono">...</span>
+                <div class="text-sm text-gray-500 mt-1">N 持续减小</div>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-gray-700 text-base leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <strong class="text-blue-700">原理解析：</strong><br>
+            如图右侧矢量三角形所示，重力 G 恒定，支持力 N 方向恒定（红色虚线）。<br>
+            挡板压力 F 的起点固定在 G 的末端，终点必须落在红色虚线上。<br>
+            当 F ⊥ N（即挡板与斜面垂直，α = θ）时，从 G 末端到红色虚线的距离最短，<br>
+            F 取得最小值 F<sub>min</sub> = mg sinθ。
+        </div>
+    </div>
+</div>
+
+<script>
+    // 物理常量
+    const theta = 30 * Math.PI / 180; // 斜面倾角 30度
+    const G_mag = 150; // 重力在画布上的基础长度
+    
+    // 状态变量
+    let alpha = 0; // 挡板转动角度 (弧度)
+    let isPlaying = false;
+    let animationId;
+
+    // 获取DOM元素
+    const physCanvas = document.getElementById('physCanvas');
+    const ctxPhys = physCanvas.getContext('2d');
+    const vecCanvas = document.getElementById('vecCanvas');
+    const ctxVec = vecCanvas.getContext('2d');
+    const slider = document.getElementById('alphaSlider');
+    const alphaValueDisplay = document.getElementById('alphaValue');
+    const fValueDisplay = document.getElementById('fValue');
+    const nValueDisplay = document.getElementById('nValue');
+    const fDescDisplay = document.getElementById('fDesc');
+    const playBtn = document.getElementById('playBtn');
+
+    // 绘制带箭头的线段
+    function drawArrow(ctx, fromx, fromy, tox, toy, color, text, textOffset = {x: 5, y: 5}) {
+        const headlen = 12;
+        const dx = tox - fromx;
+        const dy = toy - fromy;
+        const angle = Math.atan2(dy, dx);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.moveTo(fromx, fromy);
+        ctx.lineTo(tox, toy);
+        ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(tox, toy);
+        ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+        
+        if (text) {
+            ctx.fillStyle = color;
+            ctx.font = "bold 16px Arial";
+            ctx.fillText(text, tox + textOffset.x, toy + textOffset.y);
+        }
+    }
+
+    // 更新计算并重绘
+    function update() {
+        alpha = slider.value * Math.PI / 180;
+        
+        // 计算力的大小 (相对值，设 mg = 1)
+        // F = mg * sin(theta) / cos(theta - alpha)
+        // N = mg * cos(alpha) / cos(theta - alpha)
+        const F_val = Math.sin(theta) / Math.cos(theta - alpha);
+        const N_val = Math.cos(alpha) / Math.cos(theta - alpha);
+        
+        // 更新UI数值
+        alphaValueDisplay.innerText = slider.value + '°';
+        fValueDisplay.innerText = (F_val).toFixed(3) + ' mg';
+        nValueDisplay.innerText = (N_val).toFixed(3) + ' mg';
+        
+        if (slider.value < 30) {
+            fDescDisplay.innerText = "F 正在减小...";
+            fDescDisplay.className = "text-sm mt-1 text-blue-500";
+        } else if (slider.value == 30) {
+            fDescDisplay.innerText = "F 达到最小值 (F ⊥ N)";
+            fDescDisplay.className = "text-sm mt-1 text-red-500 font-bold";
+        } else {
+            fDescDisplay.innerText = "F 正在增大...";
+            fDescDisplay.className = "text-sm mt-1 text-red-500";
+        }
+
+        drawPhys(F_val, N_val);
+        drawVec(F_val, N_val);
+    }
+
+    // 绘制左侧物理情景
+    function drawPhys(F_val, N_val) {
+        ctxPhys.clearRect(0, 0, 400, 400);
+        
+        const cx = 200, cy = 200; // 小球中心
+        const R = 40; // 小球半径
+        
+        // 1. 画斜面
+        ctxPhys.beginPath();
+        ctxPhys.strokeStyle = '#333';
+        ctxPhys.lineWidth = 3;
+        // 斜面与球的切点
+        const touchInclineX = cx + R * Math.sin(theta);
+        const touchInclineY = cy + R * Math.cos(theta);
+        // 画一条长线代表斜面
+        const L = 200;
+        ctxPhys.moveTo(touchInclineX - L*Math.cos(theta), touchInclineY + L*Math.sin(theta));
+        ctxPhys.lineTo(touchInclineX + L*Math.cos(theta), touchInclineY - L*Math.sin(theta));
+        ctxPhys.stroke();
+        
+        // 2. 画挡板
+        ctxPhys.beginPath();
+        ctxPhys.strokeStyle = '#8B4513';
+        ctxPhys.lineWidth = 4;
+        // 挡板与球的切点 (挡板法线方向是 alpha)
+        const touchBaffleX = cx - R * Math.cos(alpha);
+        const touchBaffleY = cy + R * Math.sin(alpha);
+        // 挡板方向垂直于法线
+        ctxPhys.moveTo(touchBaffleX - 100*Math.sin(alpha), touchBaffleY - 100*Math.cos(alpha));
+        ctxPhys.lineTo(touchBaffleX + 100*Math.sin(alpha), touchBaffleY + 100*Math.cos(alpha));
+        ctxPhys.stroke();
+
+        // 3. 画小球
+        ctxPhys.beginPath();
+        ctxPhys.arc(cx, cy, R, 0, Math.PI * 2);
+        ctxPhys.fillStyle = 'rgba(173, 216, 230, 0.5)';
+        ctxPhys.fill();
+        ctxPhys.strokeStyle = '#333';
+        ctxPhys.lineWidth = 2;
+        ctxPhys.stroke();
+        // 圆心
+        ctxPhys.beginPath();
+        ctxPhys.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctxPhys.fillStyle = '#000';
+        ctxPhys.fill();
+
+        // 4. 画受力向量 (按比例缩放)
+        const scale = 80; 
+        // 重力 G
+        drawArrow(ctxPhys, cx, cy, cx, cy + 1 * scale, 'black', 'G', {x: 10, y: 0});
+        // 支持力 N (方向：左上)
+        drawArrow(ctxPhys, cx, cy, cx - N_val * scale * Math.sin(theta), cy - N_val * scale * Math.cos(theta), 'blue', 'N', {x: -20, y: -10});
+        // 挡板压力 F (方向：右上)
+        drawArrow(ctxPhys, cx, cy, cx + F_val * scale * Math.cos(alpha), cy - F_val * scale * Math.sin(alpha), 'red', 'F', {x: 10, y: -10});
+    }
+
+    // 绘制右侧矢量三角形
+    function drawVec(F_val, N_val) {
+        ctxVec.clearRect(0, 0, 400, 400);
+        
+        const ox = 150; // 起点 O (代表 N 和 F 的起点，在闭合三角形中)
+        const oy = 100;
+        
+        // G 向量 (向下)
+        const gx = ox;
+        const gy = oy + G_mag;
+        
+        // 1. 画辅助线：N 的反向延长线 (红色虚线)
+        ctxVec.beginPath();
+        ctxVec.setLineDash([5, 5]);
+        ctxVec.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+        ctxVec.lineWidth = 2;
+        ctxVec.moveTo(ox, oy);
+        // N 的方向是 (-sin(theta), -cos(theta))
+        // -N 的方向是 (sin(theta), cos(theta))
+        ctxVec.lineTo(ox + 300 * Math.sin(theta), oy + 300 * Math.cos(theta));
+        ctxVec.stroke();
+        ctxVec.setLineDash([]); // 恢复实线
+
+        // 2. 画历史轨迹 (淡蓝色箭头，展示 F 的变化过程)
+        for (let a = 0; a <= slider.value; a += 5) {
+            let rad = a * Math.PI / 180;
+            let f_len = Math.sin(theta) / Math.cos(theta - rad) * G_mag;
+            let bx_hist = gx + f_len * Math.cos(rad);
+            let by_hist = gy - f_len * Math.sin(rad);
+            
+            ctxVec.beginPath();
+            ctxVec.strokeStyle = 'rgba(59, 130, 246, 0.2)'; // 淡蓝色
+            ctxVec.lineWidth = 1;
+            ctxVec.moveTo(gx, gy);
+            ctxVec.lineTo(bx_hist, by_hist);
+            ctxVec.stroke();
+        }
+
+        // 计算当前 F 的末端点 B
+        const bx = gx + F_val * G_mag * Math.cos(alpha);
+        const by = gy - F_val * G_mag * Math.sin(alpha);
+
+        // 3. 画当前矢量
+        // G (从 O 到 G末端)
+        drawArrow(ctxVec, ox, oy, gx, gy, 'black', 'G', {x: -25, y: -50});
+        
+        // F (从 G末端 到 B)
+        drawArrow(ctxVec, gx, gy, bx, by, 'red', 'F', {x: 5, y: 15});
+        
+        // N (从 B 回到 O)
+        drawArrow(ctxVec, bx, by, ox, oy, 'blue', 'N', {x: 10, y: -20});
+
+        // 4. 标注垂直状态 (当 alpha == theta 时)
+        if (Math.abs(slider.value - 30) < 1) {
+            ctxVec.beginPath();
+            ctxVec.strokeStyle = 'red';
+            ctxVec.lineWidth = 2;
+            // 画直角符号
+            const size = 15;
+            const v1x = -Math.cos(alpha), v1y = Math.sin(alpha); // F的反方向
+            const v2x = -Math.sin(theta), v2y = -Math.cos(theta); // N的方向
+            ctxVec.moveTo(bx + size*v1x, by + size*v1y);
+            ctxVec.lineTo(bx + size*v1x + size*v2x, by + size*v1y + size*v2y);
+            ctxVec.lineTo(bx + size*v2x, by + size*v2y);
+            ctxVec.stroke();
+            
+            ctxVec.fillStyle = 'red';
+            ctxVec.fillText("F 最小", bx + 20, by + 20);
+        }
+    }
+
+    // 动画控制
+    playBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            cancelAnimationFrame(animationId);
+            playBtn.innerText = "自动播放";
+            playBtn.classList.replace('bg-red-600', 'bg-blue-600');
+            playBtn.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+        } else {
+            if (slider.value >= 80) slider.value = 0; // 如果到底了就重置
+            playBtn.innerText = "暂停";
+            playBtn.classList.replace('bg-blue-600', 'bg-red-600');
+            playBtn.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+            animate();
+        }
+        isPlaying = !isPlaying;
+    });
+
+    function animate() {
+        let val = parseFloat(slider.value);
+        val += 0.2; // 播放速度
+        if (val > 80) {
+            val = 80;
+            slider.value = val;
+            update();
+            playBtn.click(); // 自动停止
+            return;
+        }
+        slider.value = val;
+        update();
+        animationId = requestAnimationFrame(animate);
+    }
+
+    // 监听滑块
+    slider.addEventListener('input', () => {
+        if (isPlaying) playBtn.click(); // 手动拖动时暂停播放
+        update();
+    });
+
+    // 初始化
+    update();
+</script>
+</body>
+</html>
