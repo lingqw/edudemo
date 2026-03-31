@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传送带模型动态演示 - 2024河南联考</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background: #f0f4f8;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        .canvas-area {
+            position: relative;
+            height: 500px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+        }
+        #conveyorCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .params-card, .process-card, .calc-card {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #2563eb;
+        }
+        .params-card h3, .process-card h3, .calc-card h3 {
+            color: #1e40af;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        .param-item span:first-child {
+            color: #475569;
+        }
+        .param-item span:last-child {
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        #startBtn {
+            background: #10b981;
+            color: white;
+        }
+        #startBtn:hover {
+            background: #059669;
+        }
+        #resetBtn {
+            background: #ef4444;
+            color: white;
+        }
+        #resetBtn:hover {
+            background: #dc2626;
+        }
+        .process-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #10b981;
+            display: none;
+        }
+        .process-step.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .process-step h4 {
+            color: #065f46;
+            margin-bottom: 8px;
+        }
+        .process-step p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #334155;
+        }
+        .calc-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #eff6ff;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        .calc-result .ans {
+            color: #dc2626;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .force-vector {
+            position: absolute;
+            pointer-events: none;
+        }
+        .vector-label {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #dc2626;
+        }
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            .canvas-area {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>传送带模型动态演示</h1>
+            <p>2024河南联考 重难题8 知识点可视化</p>
+        </div>
+        <div class="content">
+            <div class="canvas-area">
+                <canvas id="conveyorCanvas"></canvas>
+            </div>
+            <div class="control-panel">
+                <div class="params-card">
+                    <h3>题目已知参数</h3>
+                    <div class="param-item"><span>传送带倾角 α</span><span>30°</span></div>
+                    <div class="param-item"><span>传送带速度 v₀</span><span>8 m/s</span></div>
+                    <div class="param-item"><span>工料质量 m</span><span>300 kg</span></div>
+                    <div class="param-item"><span>牵引力 F</span><span>3000 N</span></div>
+                    <div class="param-item"><span>牵引时间 t₀</span><span>2 s</span></div>
+                    <div class="param-item"><span>动摩擦因数 μ</span><span>√3/5 ≈ 0.346</span></div>
+                    <div class="param-item"><span>重力加速度 g</span><span>10 m/s²</span></div>
+                </div>
+
+                <div class="process-card">
+                    <h3>运动过程拆解</h3>
+                    <div class="process-step" id="step1">
+                        <h4>阶段1：0~2s 有牵引力阶段</h4>
+                        <p>工料受牵引力F、重力分力、传送带摩擦力，做匀加速直线运动。</p>
+                        <p>受力分析：F + μmgcosα - mgsinα = ma₁</p>
+                        <div class="calc-result">
+                            计算得：a₁ = <span id="a1Val"></span> m/s²<br>
+                            t=2s时速度 v₁ = a₁t₀ = <span id="v1Val" class="ans"></span> m/s<br>
+                            位移 x₁ = ½a₁t₀² = <span id="x1Val"></span> m
+                        </div>
+                    </div>
+                    <div class="process-step" id="step2">
+                        <h4>阶段2：2s后 关闭电机，速度v₁ > v₀阶段</h4>
+                        <p>工料速度大于传送带，摩擦力反向，做匀减速运动，直到速度等于v₀。</p>
+                        <p>受力分析：-μmgcosα - mgsinα = ma₂</p>
+                        <div class="calc-result">
+                            计算得：a₂ = <span id="a2Val"></span> m/s²<br>
+                            减速时间 t₂ = (v₀ - v₁)/a₂ = <span id="t2Val"></span> s<br>
+                            位移 x₂ = v₁t₂ + ½a₂t₂² = <span id="x2Val"></span> m
+                        </div>
+                    </div>
+                    <div class="process-step" id="step3">
+                        <h4>阶段3：速度v₀后 继续减速到0阶段</h4>
+                        <p>工料速度等于传送带，摩擦力再次反向，做匀减速运动，直到B点速度为0。</p>
+                        <p>受力分析：μmgcosα - mgsinα = ma₃</p>
+                        <div class="calc-result">
+                            计算得：a₃ = <span id="a3Val"></span> m/s²<br>
+                            减速时间 t₃ = (0 - v₀)/a₃ = <span id="t3Val"></span> s<br>
+                            位移 x₃ = v₀t₃ + ½a₃t₃² = <span id="x3Val"></span> m<br>
+                            AB总距离 L = x₁ + x₂ + x₃ = <span id="LVal" class="ans"></span> m
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button id="startBtn">▶ 开始演示</button>
+                        <button id="resetBtn">↺ 重置</button>
+                    </div>
+                </div>
+
+                <div class="calc-card">
+                    <h3>最终答案</h3>
+                    <div class="calc-result">
+                        (1) t₀=2s时工料速度：<span id="ans1" class="ans">12 m/s</span><br>
+                        (2) 传送带AB两端距离：<span id="ans2" class="ans">19.2 m</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 物理参数
+        const alpha = 30 * Math.PI / 180; // 弧度
+        const v0 = 8;
+        const m = 300;
+        const F = 3000;
+        const t0 = 2;
+        const mu = Math.sqrt(3)/5;
+        const g = 10;
+
+        // 计算各阶段加速度、位移
+        const a1 = (F + mu*m*g*Math.cos(alpha) - m*g*Math.sin(alpha))/m;
+        const v1 = a1 * t0;
+        const x1 = 0.5 * a1 * t0**2;
+
+        const a2 = (-mu*m*g*Math.cos(alpha) - m*g*Math.sin(alpha))/m;
+        const t2 = (v0 - v1)/a2;
+        const x2 = v1*t2 + 0.5*a2*t2**2;
+
+        const a3 = (mu*m*g*Math.cos(alpha) - m*g*Math.sin(alpha))/m;
+        const t3 = (0 - v0)/a3;
+        const x3 = v0*t3 + 0.5*a3*t3**2;
+        const L = x1 + x2 + x3;
+
+        // 填充计算结果
+        document.getElementById('a1Val').textContent = a1.toFixed(1);
+        document.getElementById('v1Val').textContent = v1.toFixed(0);
+        document.getElementById('x1Val').textContent = x1.toFixed(1);
+
+        document.getElementById('a2Val').textContent = a2.toFixed(1);
+        document.getElementById('t2Val').textContent = t2.toFixed(2);
+        document.getElementById('x2Val').textContent = x2.toFixed(1);
+
+        document.getElementById('a3Val').textContent = a3.toFixed(1);
+        document.getElementById('t3Val').textContent = t3.toFixed(2);
+        document.getElementById('x3Val').textContent = x3.toFixed(1);
+        document.getElementById('LVal').textContent = L.toFixed(1);
+
+        // Canvas 动画
+        const canvas = document.getElementById('conveyorCanvas');
+        const ctx = canvas.getContext('2d');
+        let canvasWidth, canvasHeight;
+        let scale = 30; // 像素/米
+        let time = 0;
+        let animationId = null;
+        let isRunning = false;
+
+        // 画布尺寸自适应
+        function resizeCanvas() {
+            canvasWidth = canvas.clientWidth;
+            canvasHeight = canvas.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            scale = Math.min(canvasWidth / (L + 5), canvasHeight / 10);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 绘制传送带
+        function drawConveyor() {
+            const A_x = 50;
+            const A_y = canvasHeight - 50;
+            const B_x = A_x + L * scale * Math.cos(alpha);
+            const B_y = A_y - L * scale * Math.sin(alpha);
+
+            // 传送带主体
+            ctx.beginPath();
+            ctx.moveTo(A_x, A_y);
+            ctx.lineTo(B_x, B_y);
+            ctx.lineWidth = 15;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.stroke();
+
+            // 传送带滚轮
+            ctx.beginPath();
+            ctx.arc(A_x, A_y, 15, 0, 2*Math.PI);
+            ctx.fillStyle = '#64748b';
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(B_x, B_y, 15, 0, 2*Math.PI);
+            ctx.fillStyle = '#64748b';
+            ctx.fill();
+            ctx.stroke();
+
+            // 标注A、B点
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText('A', A_x - 25, A_y + 10);
+            ctx.fillText('B', B_x + 10, B_y - 10);
+
+            return {A_x, A_y, B_x, B_y};
+        }
+
+        // 绘制工料
+        function drawMaterial(pos, phase) {
+            const x = pos.x;
+            const y = pos.y;
+            const size = 30;
+
+            // 工料方块
+            ctx.fillStyle = '#f97316';
+            ctx.fillRect(x - size/2, y - size/2, size, size);
+            ctx.strokeStyle = '#c2410c';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x - size/2, y - size/2, size, size);
+
+            // 受力矢量（根据阶段不同）
+            drawForces(x, y, phase);
+        }
+
+        // 绘制受力分析
+        function drawForces(x, y, phase) {
+            const vecScale = 0.02;
+            const mg = m*g;
+            const f_g_x = -mg * Math.sin(alpha);
+            const f_g_y = -mg * Math.cos(alpha);
+
+            // 重力分力（始终存在）
+            drawVector(x, y, f_g_x*vecScale, f_g_y*vecScale, '#64748b', 'G分');
+
+            if (phase === 1) {
+                // 阶段1：F + 摩擦力向上
+                const f_f = mu * mg * Math.cos(alpha);
+                const f_f_x = f_f * Math.cos(alpha);
+                const f_f_y = f_f * Math.sin(alpha);
+                const F_x = F * Math.cos(alpha);
+                const F_y = F * Math.sin(alpha);
+
+                drawVector(x, y, F_x*vecScale, F_y*vecScale, '#ef4444', 'F');
+                drawVector(x, y, f_f_x*vecScale, f_f_y*vecScale, '#10b981', 'f');
+            } else if (phase === 2) {
+                // 阶段2：摩擦力向下
+                const f_f = mu * mg * Math.cos(alpha);
+                const f_f_x = -f_f * Math.cos(alpha);
+                const f_f_y = -f_f * Math.sin(alpha);
+
+                drawVector(x, y, f_f_x*vecScale, f_f_y*vecScale, '#f59e0b', 'f↓');
+            } else if (phase === 3) {
+                // 阶段3：摩擦力向上
+                const f_f = mu * mg * Math.cos(alpha);
+                const f_f_x = f_f * Math.cos(alpha);
+                const f_f_y = f_f * Math.sin(alpha);
+
+                drawVector(x, y, f_f_x*vecScale, f_f_y*vecScale, '#10b981', 'f↑');
+            }
+        }
+
+        // 绘制矢量
+        function drawVector(x, y, dx, dy, color, label) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + dx, y + dy);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 箭头
+            const angle = Math.atan2(dy, dx);
+            const arrowLen = 8;
+            ctx.beginPath();
+            ctx.moveTo(x + dx, y + dy);
+            ctx.lineTo(x + dx - arrowLen*Math.cos(angle - Math.PI/6), y + dy - arrowLen*Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x + dx - arrowLen*Math.cos(angle + Math.PI/6), y + dy - arrowLen*Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            // 标签
+            ctx.fillStyle = color;
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(label, x + dx + 10*Math.cos(angle), y + dy + 10*Math.sin(angle));
+        }
+
+        // 计算工料位置
+        function getPosition(t) {
+            const {A_x, A_y} = drawConveyor();
+            let x, y, phase;
+
+            if (t <= t0) {
+                // 阶段1
+                phase = 1;
+                const s = 0.5 * a1 * t**2;
+                x = A_x + s * scale * Math.cos(alpha);
+                y = A_y - s * scale * Math.sin(alpha);
+            } else if (t <= t0 + t2) {
+                // 阶段2
+                phase = 2;
+                const t_ = t - t0;
+                const s = x1 + v1*t_ + 0.5*a2*t_**2;
+                x = A_x + s * scale * Math.cos(alpha);
+                y = A_y - s * scale * Math.sin(alpha);
+            } else if (t <= t0 + t2 + t3) {
+                // 阶段3
+                phase = 3;
+                const t_ = t - t0 - t2;
+                const s = x1 + x2 + v0*t_ + 0.5*a3*t_**2;
+                x = A_x + s * scale * Math.cos(alpha);
+                y = A_y - s * scale * Math.sin(alpha);
+            } else {
+                // 终点
+                phase = 3;
+                x = A_x + L * scale * Math.cos(alpha);
+                y = A_y - L * scale * Math.sin(alpha);
+            }
+
+            return {x, y, phase};
+        }
+
+        // 动画主循环
+        function animate() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            const {A_x, A_y, B_x, B_y} = drawConveyor();
+            const pos = getPosition(time);
+            drawMaterial(pos, pos.phase);
+
+            // 更新阶段显示
+            document.querySelectorAll('.process-step').forEach(step => step.classList.remove('active'));
+            if (time <= t0) {
+                document.getElementById('step1').classList.add('active');
+            } else if (time <= t0 + t2) {
+                document.getElementById('step2').classList.add('active');
+            } else {
+                document.getElementById('step3').classList.add('active');
+            }
+
+            if (time < t0 + t2 + t3) {
+                time += 0.05;
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isRunning = false;
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // 按钮事件
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            time = 0;
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            drawConveyor();
+            const startPos = getPosition(0);
+            drawMaterial(startPos, 1);
+            document.querySelectorAll('.process-step').forEach(step => step.classList.remove('active'));
+            document.getElementById('step1').classList.add('active');
+        });
+
+        // 初始绘制
+        document.getElementById('resetBtn').click();
+    </script>
+</body>
+</html>
