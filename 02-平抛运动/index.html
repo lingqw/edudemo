@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抛体运动核心规律全景演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+        }
+        .math { font-family: "Times New Roman", Times, serif; font-style: italic; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-4 md:p-8">
+
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-2 text-blue-800">抛体运动核心规律动态演示</h1>
+    <p class="text-center text-gray-600 mb-6">完美还原手写笔记：平抛角度关系、斜面极值、斜抛运动(化曲为直)</p>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- 左侧：画布区域 -->
+        <div class="flex-1 flex flex-col items-center bg-white p-4 rounded-xl shadow-md">
+            <canvas id="simCanvas" width="700" height="450" class="w-full max-w-[700px]"></canvas>
+            
+            <!-- 控制面板 -->
+            <div class="w-full mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex items-center gap-2">
+                    <button id="playBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition w-24">播放</button>
+                    <button id="resetBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow transition w-24">重置</button>
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <label class="flex items-center justify-between text-sm font-medium">
+                        初速度 <span class="math">V₀</span>: <span id="v0Val" class="text-blue-600">20 m/s</span>
+                        <input type="range" id="v0Slider" min="10" max="40" value="20" step="1" class="w-32">
+                    </label>
+                    
+                    <label class="flex items-center justify-between text-sm font-medium">
+                        模式切换:
+                        <select id="modeSelect" class="border border-gray-300 rounded px-2 py-1 text-sm bg-blue-50 font-bold text-blue-700">
+                            <option value="standard">① 平抛：中点推论与角度关系</option>
+                            <option value="incline">② 平抛：落至斜面与最远点</option>
+                            <option value="oblique">③ 斜抛：化曲为直与射高射程</option>
+                        </select>
+                    </label>
+
+                    <label id="thetaControl" class="flex items-center justify-between text-sm font-medium hidden">
+                        <span id="thetaLabelText">角度</span> <span class="math">θ</span>: <span id="thetaVal" class="text-blue-600">30°</span>
+                        <input type="range" id="thetaSlider" min="15" max="75" value="30" step="1" class="w-32">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：实时数据与公式面板 -->
+        <div class="w-full lg:w-80 flex flex-col gap-4">
+            <!-- 实时数据 -->
+            <div class="bg-white p-5 rounded-xl shadow-md">
+                <h3 class="text-lg font-bold border-b pb-2 mb-3 text-gray-800">实时数据 (<span class="math">t</span> = <span id="timeDisplay" class="text-red-500 font-bold">0.00</span> s)</h3>
+                <div class="grid grid-cols-2 gap-y-2 text-sm">
+                    <div><span class="math">V_x</span> = <span id="vxDisplay">0.0</span></div>
+                    <div><span class="math">V_y</span> = <span id="vyDisplay">0.0</span></div>
+                    <div><span class="math">x</span> = <span id="xDisplay">0.0</span></div>
+                    <div><span class="math">y</span> = <span id="yDisplay">0.0</span></div>
+                </div>
+                
+                <!-- 模式1数据 -->
+                <div id="angleData" class="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
+                    <div class="font-bold text-blue-800 mb-1">角度关系验证：</div>
+                    <div><span class="math">tan(α)</span> = <span id="tanAlphaDisplay" class="font-bold">0.00</span></div>
+                    <div><span class="math">tan(β)</span> = <span id="tanBetaDisplay" class="font-bold">0.00</span></div>
+                    <div class="mt-1 text-red-600 font-bold text-center bg-red-50 py-1 rounded border border-red-100">
+                        tan(α) = 2 × tan(β)
+                    </div>
+                </div>
+
+                <!-- 模式2数据 -->
+                <div id="inclineData" class="mt-4 p-3 bg-green-50 rounded border border-green-100 hidden">
+                    <div class="font-bold text-green-800 mb-1">斜面极值点：</div>
+                    <div>理论最远时间 <span class="math">t'</span> = <span id="tMaxDisplay" class="font-bold">0.00</span> s</div>
+                    <div>落点总时间 <span class="math">t</span> = <span id="tLandDisplay" class="font-bold">0.00</span> s</div>
+                </div>
+
+                <!-- 模式3数据 -->
+                <div id="obliqueData" class="mt-4 p-3 bg-purple-50 rounded border border-purple-100 hidden">
+                    <div class="font-bold text-purple-800 mb-1">斜抛极值：</div>
+                    <div>上升时间 <span class="math">t_上</span> = <span id="tUpDisplay" class="font-bold text-purple-600">0.00</span> s</div>
+                    <div>最大射高 <span class="math">h</span> = <span id="hMaxDisplay" class="font-bold text-purple-600">0.00</span> m</div>
+                    <div>最大射程 <span class="math">X</span> = <span id="xMaxDisplay" class="font-bold text-purple-600">0.00</span> m</div>
+                </div>
+            </div>
+
+            <!-- 笔记公式对照 -->
+            <div class="bg-white p-5 rounded-xl shadow-md flex-1">
+                <h3 class="text-lg font-bold border-b pb-2 mb-3 text-gray-800">笔记核心结论</h3>
+                
+                <!-- 模式1笔记 -->
+                <ul id="noteStandard" class="text-sm space-y-3 text-gray-700">
+                    <li class="flex items-start"><span class="text-red-500 mr-2">1)</span><span>速度偏向角正切值是位移偏向角正切值的两倍：<br><strong class="text-black">tan α = 2 tan β</strong></span></li>
+                    <li class="flex items-start"><span class="text-red-500 mr-2">2)</span><span>任意时刻，速度 <span class="math">V_t</span> 的反向延长线，必定交于水平位移的中点 <strong class="text-black">(x/2, 0)</strong>。</span></li>
+                </ul>
+
+                <!-- 模式2笔记 -->
+                <ul id="noteIncline" class="text-sm space-y-3 text-gray-700 hidden">
+                    <li class="flex items-start"><span class="text-red-500 mr-2">1)</span><span>落到斜面上时，距离斜面最远的时刻 <span class="math">t'</span> 恰好是总飞行时间 <span class="math">t</span> 的一半：<br><strong class="text-black">t' = t / 2</strong></span></li>
+                    <li class="flex items-start"><span class="text-red-500 mr-2">2)</span><span>此时速度方向与斜面平行。</span></li>
+                </ul>
+
+                <!-- 模式3笔记 -->
+                <ul id="noteOblique" class="text-sm space-y-3 text-gray-700 hidden">
+                    <li class="flex items-start"><span class="text-red-500 mr-2">1)</span><span><strong>化曲为直：</strong><br>水平：匀速 <span class="math">V_x = V_0\cos\theta</span><br>竖直：上抛 <span class="math">V_y = V_0\sin\theta</span></span></li>
+                    <li class="flex items-start"><span class="text-red-500 mr-2">2)</span><span><strong>最高点：</strong><br><span class="math">V_y = 0, V_x = V_0\cos\theta</span><br>上升时间 <span class="math">t = \frac{V_0\sin\theta}{g}</span></span></li>
+                    <li class="flex items-start"><span class="text-red-500 mr-2">3)</span><span><strong>射高与射程：</strong><br>射高 <span class="math">h = \frac{V_0^2\sin^2\theta}{2g}</span><br>射程 <span class="math">X = \frac{2V_0^2\sin\theta\cos\theta}{g}</span></span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 物理引擎与状态 ---
+    const g = 9.8; 
+    let v0 = 20;   
+    let theta = 30 * Math.PI / 180; 
+    let t = 0;     
+    let isPlaying = false;
+    let mode = 'standard'; 
+    let animationId;
+    
+    // 画布缩放
+    const scale = 3.5; // 1米 = 3.5像素
+
+    // --- DOM 元素 ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const v0Slider = document.getElementById('v0Slider');
+    const v0Val = document.getElementById('v0Val');
+    const modeSelect = document.getElementById('modeSelect');
+    const thetaControl = document.getElementById('thetaControl');
+    const thetaSlider = document.getElementById('thetaSlider');
+    const thetaVal = document.getElementById('thetaVal');
+    const thetaLabelText = document.getElementById('thetaLabelText');
+
+    // 数据显示DOM
+    const timeDisplay = document.getElementById('timeDisplay');
+    const vxDisplay = document.getElementById('vxDisplay');
+    const vyDisplay = document.getElementById('vyDisplay');
+    const xDisplay = document.getElementById('xDisplay');
+    const yDisplay = document.getElementById('yDisplay');
+    
+    // 面板DOM
+    const angleData = document.getElementById('angleData');
+    const inclineData = document.getElementById('inclineData');
+    const obliqueData = document.getElementById('obliqueData');
+    const noteStandard = document.getElementById('noteStandard');
+    const noteIncline = document.getElementById('noteIncline');
+    const noteOblique = document.getElementById('noteOblique');
+
+    // --- 绘图辅助函数 ---
+    function drawArrow(fromX, fromY, toX, toY, color, text, textOffsetX=5, textOffsetY=5) {
+        const headlen = 10;
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const angle = Math.atan2(dy, dx);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+        
+        if (text) {
+            ctx.fillStyle = color;
+            ctx.font = "italic bold 14px Arial";
+            ctx.fillText(text, toX + textOffsetX, toY + textOffsetY);
+        }
+    }
+
+    function drawDashedLine(x1, y1, x2, y2, color) {
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // --- 主绘制逻辑 ---
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 根据模式确定原点
+        let originX = 50;
+        let originY = (mode === 'oblique') ? canvas.height - 60 : 50;
+
+        // 物理坐标计算
+        let x, y, vx, vy;
+        
+        if (mode === 'standard' || mode === 'incline') {
+            x = v0 * t;
+            y = 0.5 * g * t * t; // 向下为正
+            vx = v0;
+            vy = g * t;
+        } else if (mode === 'oblique') {
+            const v0x = v0 * Math.cos(theta);
+            const v0y = v0 * Math.sin(theta);
+            x = v0x * t;
+            y = v0y * t - 0.5 * g * t * t; // 向上为正
+            vx = v0x;
+            vy = v0y - g * t;
+        }
+        
+        // 画布坐标转换 (注意斜抛模式下 y 轴向上)
+        const cx = originX + x * scale;
+        const cy = (mode === 'oblique') ? originY - y * scale : originY + y * scale;
+
+        // 1. 绘制坐标系和基准线
+        ctx.beginPath();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        if (mode === 'oblique') {
+            ctx.moveTo(originX - 20, originY);
+            ctx.lineTo(canvas.width - 20, originY); // 地面
+            ctx.stroke();
+        } else {
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(canvas.width - 20, originY); // X轴
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX, canvas.height - 20); // Y轴
+            ctx.stroke();
+            ctx.fillStyle = '#64748b';
+            ctx.fillText("X", canvas.width - 15, originY - 10);
+            ctx.fillText("Y", originX - 20, canvas.height - 10);
+        }
+
+        // 2. 绘制特定模式的背景元素
+        let tLand = 0, tMaxDist = 0, tUp = 0, hMax = 0, xMax = 0;
+
+        if (mode === 'incline') {
+            ctx.beginPath();
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 3;
+            ctx.moveTo(originX, originY);
+            const inclineLength = 800;
+            ctx.lineTo(originX + inclineLength * Math.cos(theta), originY + inclineLength * Math.sin(theta));
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(originX, originY, 40, 0, theta);
+            ctx.strokeStyle = '#0284c7';
+            ctx.stroke();
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText("θ", originX + 45, originY + 20);
+
+            tLand = (2 * v0 * Math.tan(theta)) / g;
+            tMaxDist = tLand / 2;
+            
+            document.getElementById('tMaxDisplay').innerText = tMaxDist.toFixed(2);
+            document.getElementById('tLandDisplay').innerText = tLand.toFixed(2);
+        } else if (mode === 'oblique') {
+            const v0x = v0 * Math.cos(theta);
+            const v0y = v0 * Math.sin(theta);
+            tUp = v0y / g;
+            tLand = 2 * tUp;
+            hMax = (v0y * v0y) / (2 * g);
+            xMax = v0x * tLand;
+
+            document.getElementById('tUpDisplay').innerText = tUp.toFixed(2);
+            document.getElementById('hMaxDisplay').innerText = hMax.toFixed(2);
+            document.getElementById('xMaxDisplay').innerText = xMax.toFixed(2);
+
+            // 绘制最高点标记 h
+            const hx = originX + (v0x * tUp) * scale;
+            const hy = originY - hMax * scale;
+            drawDashedLine(hx, originY, hx, hy, '#9333ea');
+            ctx.fillStyle = '#9333ea';
+            ctx.fillText("h", hx - 15, originY - (hMax*scale)/2);
+            
+            // 绘制最高点速度 Vx
+            drawArrow(hx, hy, hx + v0x*2, hy, '#16a34a', 'Vx=V₀cosθ', 5, -5);
+            ctx.fillStyle = '#000';
+            ctx.fillText("最高点 Vy=0", hx - 30, hy - 15);
+
+            // 绘制射程标记 X
+            const endX = originX + xMax * scale;
+            ctx.beginPath();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.moveTo(originX, originY + 15);
+            ctx.lineTo(originX, originY + 25);
+            ctx.moveTo(endX, originY + 15);
+            ctx.lineTo(endX, originY + 25);
+            ctx.moveTo(originX, originY + 20);
+            ctx.lineTo(endX, originY + 20);
+            ctx.stroke();
+            ctx.fillText("X", originX + (xMax*scale)/2, originY + 35);
+        }
+
+        // 3. 绘制轨迹
+        ctx.beginPath();
+        ctx.strokeStyle = '#3b82f6'; 
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]); // 笔记中斜抛是虚线轨迹
+        ctx.moveTo(originX, originY);
+        
+        const maxDrawTime = (mode === 'standard') ? t : Math.min(t, tLand);
+        for (let dt = 0; dt <= maxDrawTime; dt += 0.05) {
+            if (mode === 'oblique') {
+                let px = originX + (v0 * Math.cos(theta) * dt) * scale;
+                let py = originY - (v0 * Math.sin(theta) * dt - 0.5 * g * dt * dt) * scale;
+                ctx.lineTo(px, py);
+            } else {
+                ctx.lineTo(originX + (v0 * dt) * scale, originY + (0.5 * g * dt * dt) * scale);
+            }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 4. 绘制当前状态
+        if (mode === 'standard' || t <= tLand) {
+            const vScale = 2; 
+
+            if (mode === 'oblique') {
+                // 斜抛模式：在原点绘制初始速度分解
+                if (t < 0.1) {
+                    const v0x = v0 * Math.cos(theta);
+                    const v0y = v0 * Math.sin(theta);
+                    drawArrow(originX, originY, originX + v0x*vScale, originY, '#16a34a', 'Vx', 5, 15);
+                    drawArrow(originX, originY, originX, originY - v0y*vScale, '#16a34a', 'Vy', -25, 5);
+                    drawArrow(originX, originY, originX + v0x*vScale, originY - v0y*vScale, '#2563eb', 'V₀', 5, -5);
+                    drawDashedLine(originX + v0x*vScale, originY, originX + v0x*vScale, originY - v0y*vScale, '#16a34a');
+                    drawDashedLine(originX, originY - v0y*vScale, originX + v0x*vScale, originY - v0y*vScale, '#16a34a');
+                    
+                    ctx.beginPath();
+                    ctx.arc(originX, originY, 30, -theta, 0);
+                    ctx.strokeStyle = '#000';
+                    ctx.stroke();
+                    ctx.fillStyle = '#000';
+                    ctx.fillText("θ", originX + 35, originY - 10);
+                }
+
+                // 绘制当前速度向量
+                drawArrow(cx, cy, cx + vx * vScale, cy, '#16a34a', '');
+                drawArrow(cx, cy, cx, cy - vy * vScale, '#16a34a', ''); // 注意方向
+                drawArrow(cx, cy, cx + vx * vScale, cy - vy * vScale, '#15803d', 'Vt', 5, -5);
+            } else {
+                // 平抛模式
+                drawDashedLine(originX, cy, cx, cy, '#94a3b8'); 
+                drawDashedLine(cx, originY, cx, cy, '#94a3b8'); 
+                if (t > 0) drawArrow(originX, originY, cx, cy, '#2563eb', 'S', 5, -5);
+
+                drawArrow(cx, cy, cx + vx * vScale, cy, '#16a34a', 'Vx', 5, -5);
+                drawArrow(cx, cy, cx, cy + vy * vScale, '#16a34a', 'Vy', 5, 15);
+                drawArrow(cx, cy, cx + vx * vScale, cy + vy * vScale, '#15803d', 'Vt', 10, 15);
+                drawDashedLine(cx + vx * vScale, cy, cx + vx * vScale, cy + vy * vScale, '#16a34a');
+                drawDashedLine(cx, cy + vy * vScale, cx + vx * vScale, cy + vy * vScale, '#16a34a');
+
+                if (mode === 'standard' && t > 0.1) {
+                    const midX = originX + (x / 2) * scale;
+                    drawDashedLine(cx, cy, midX, originY, '#dc2626'); 
+                    ctx.beginPath(); ctx.arc(midX, originY, 4, 0, Math.PI*2); ctx.fillStyle = '#dc2626'; ctx.fill();
+                    ctx.fillText("x/2", midX - 10, originY - 10);
+
+                    const alpha = Math.atan2(vy, vx);
+                    const beta = Math.atan2(y, x);
+                    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, alpha); ctx.strokeStyle = '#15803d'; ctx.stroke();
+                    ctx.fillStyle = '#15803d'; ctx.fillText("α", cx + 35, cy + 15);
+                    ctx.beginPath(); ctx.arc(originX, originY, 60, 0, beta); ctx.strokeStyle = '#2563eb'; ctx.stroke();
+                    ctx.fillStyle = '#2563eb'; ctx.fillText("β", originX + 65, originY + 25);
+                }
+
+                if (mode === 'incline' && t >= tMaxDist && tMaxDist > 0) {
+                    const mx = originX + (v0 * tMaxDist) * scale;
+                    const my = originY + (0.5 * g * tMaxDist * tMaxDist) * scale;
+                    ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI*2); ctx.fillStyle = '#eab308'; ctx.fill();
+                    ctx.fillText("离斜面最远点", mx + 10, my - 10);
+                    drawArrow(mx, my, mx + v0*2, my + (g*tMaxDist)*2, '#eab308', '');
+                }
+            }
+
+            // 绘制小球
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#7f1d1d';
+            ctx.stroke();
+        }
+
+        // --- 更新数据面板 ---
+        timeDisplay.innerText = t.toFixed(2);
+        vxDisplay.innerText = vx.toFixed(1);
+        vyDisplay.innerText = Math.abs(vy).toFixed(1); // 显示绝对值更直观
+        xDisplay.innerText = x.toFixed(1);
+        yDisplay.innerText = Math.abs(y).toFixed(1);
+
+        if (mode === 'standard') {
+            if (t > 0) {
+                document.getElementById('tanAlphaDisplay').innerText = (vy / vx).toFixed(3);
+                document.getElementById('tanBetaDisplay').innerText = (y / x).toFixed(3);
+            } else {
+                document.getElementById('tanAlphaDisplay').innerText = "0.000";
+                document.getElementById('tanBetaDisplay').innerText = "0.000";
+            }
+        }
+    }
+
+    // --- 动画循环 ---
+    function animate() {
+        if (!isPlaying) return;
+        
+        t += 0.03; 
+        
+        if (mode === 'standard') {
+            if ((50 + 0.5 * g * t * t * scale) > canvas.height - 20 || (50 + v0 * t * scale) > canvas.width - 20) {
+                playBtn.click(); 
+            }
+        } else if (mode === 'incline') {
+            const tLand = (2 * v0 * Math.tan(theta)) / g;
+            if (t >= tLand) {
+                t = tLand; 
+                draw();
+                playBtn.click(); 
+                return;
+            }
+        } else if (mode === 'oblique') {
+            const tLand = (2 * v0 * Math.sin(theta)) / g;
+            if (t >= tLand) {
+                t = tLand;
+                draw();
+                playBtn.click();
+                return;
+            }
+        }
+        
+        draw();
+        animationId = requestAnimationFrame(animate);
+    }
+
+    // --- 事件监听 ---
+    playBtn.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        if (isPlaying) {
+            playBtn.innerText = "暂停";
+            playBtn.classList.replace('bg-blue-600', 'bg-red-600');
+            playBtn.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+            animate();
+        } else {
+            playBtn.innerText = "播放";
+            playBtn.classList.replace('bg-red-600', 'bg-blue-600');
+            playBtn.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+            cancelAnimationFrame(animationId);
+        }
+    });
+
+    resetBtn.addEventListener('click', () => {
+        isPlaying = false;
+        playBtn.innerText = "播放";
+        playBtn.classList.replace('bg-red-600', 'bg-blue-600');
+        playBtn.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+        cancelAnimationFrame(animationId);
+        t = 0;
+        draw();
+    });
+
+    v0Slider.addEventListener('input', (e) => {
+        v0 = parseFloat(e.target.value);
+        v0Val.innerText = v0 + " m/s";
+        if (!isPlaying) draw();
+    });
+
+    thetaSlider.addEventListener('input', (e) => {
+        const deg = parseFloat(e.target.value);
+        theta = deg * Math.PI / 180;
+        thetaVal.innerText = deg + "°";
+        if (!isPlaying) draw();
+    });
+
+    modeSelect.addEventListener('change', (e) => {
+        mode = e.target.value;
+        
+        // UI 切换逻辑
+        angleData.classList.add('hidden');
+        inclineData.classList.add('hidden');
+        obliqueData.classList.add('hidden');
+        noteStandard.classList.add('hidden');
+        noteIncline.classList.add('hidden');
+        noteOblique.classList.add('hidden');
+        thetaControl.classList.add('hidden');
+
+        if (mode === 'standard') {
+            angleData.classList.remove('hidden');
+            noteStandard.classList.remove('hidden');
+        } else if (mode === 'incline') {
+            inclineData.classList.remove('hidden');
+            noteIncline.classList.remove('hidden');
+            thetaControl.classList.remove('hidden');
+            thetaLabelText.innerText = "斜面倾角";
+            thetaSlider.max = 60;
+        } else if (mode === 'oblique') {
+            obliqueData.classList.remove('hidden');
+            noteOblique.classList.remove('hidden');
+            thetaControl.classList.remove('hidden');
+            thetaLabelText.innerText = "抛射角";
+            thetaSlider.max = 85; // 斜抛可以抛得更高
+        }
+        
+        resetBtn.click(); 
+    });
+
+    // 初始化
+    draw();
+</script>
+</body>
+</html>
